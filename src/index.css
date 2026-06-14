@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@400;600;800&family=Space+Grotesk:wght@400;550;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-orbitron: 'Orbitron', system-ui, sans-serif;
+  --font-space: 'Space Grotesk', system-ui, sans-serif;
+  
+  --color-geo-bg: #050B10;
+  --color-geo-panel: #0A1118;
+  --color-geo-border: #1E293B;
+  --color-geo-cyan: #00D1FF;
+  --color-geo-orange: #F59E0B;
+  --color-geo-green: #10B981;
+}
+
+/* Custom visual scanlines effect for sonar style screens with geometric color */
+.bg-scanlines {
+  background: linear-gradient(
+    rgba(10, 17, 24, 0) 50%, 
+    rgba(0, 209, 255, 0.04) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(10, 17, 24, 0) 50%,
+    rgba(0, 209, 255, 0.04) 50%
+  );
+  background-size: 5px 5px;
+}
+
+@keyframes sonar-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.sonar-radial-wave {
+  animation: sonar-pulse 3s infinite linear;
+}
+
