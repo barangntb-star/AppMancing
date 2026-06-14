@@ -1,6 +1,6 @@
 {
   "name": "Sonar Kolam - Pencari Ikan",
   "description": "Aplikasi pendeteksi posisi ikan dan visualisasi sonar bawah air real-time untuk hobi memancing di kolam.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

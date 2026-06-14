@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Fish, SonarSettings, CatchLog, PondStructure, DeviceStatus } from './types';
 import { generateInitialFishes, updateFishPositions } from './utils/simulation';
 import DevicePanel from './components/DevicePanel';
+import GpsTracker from './components/GpsTracker';
 import SonarDisplay from './components/SonarDisplay';
 import PondMap from './components/PondMap';
 import LogbookPanel from './components/LogbookPanel';
@@ -85,6 +86,17 @@ export default function App() {
   const [fishes, setFishes] = useState<Fish[]>([]);
   const [structures, setStructures] = useState<PondStructure[]>([]);
   const [logs, setLogs] = useState<CatchLog[]>([]);
+  
+  // Real GPS data state (default to scenic Indonesian fishing area coordinates)
+  const [gpsData, setGpsData] = useState({
+    latitude: -6.20876,
+    longitude: 106.845592,
+    accuracy: null as number | null,
+    altitude: null as number | null,
+    heading: null as number | null,
+    speed: null as number | null,
+    pondName: 'Kolam Pemancingan Kebayoran'
+  });
   
   // Guide helper modal toggle
   const [showIntro, setShowIntro] = useState(true);
@@ -402,6 +414,12 @@ export default function App() {
                 onUpdateDevice={handleUpdateDevice} 
                 onConnectToggle={handleConnectToggle} 
               />
+
+              {/* Geographic GPS tracking station */}
+              <GpsTracker 
+                gpsData={gpsData} 
+                onGpsUpdate={setGpsData} 
+              />
               
               <SonarDisplay 
                 device={device} 
@@ -442,6 +460,7 @@ export default function App() {
               onAddLog={handleAddLog}
               onRemoveLog={handleRemoveLog}
               currentDepth={currentDepth}
+              gpsData={gpsData}
             />
           )}
 

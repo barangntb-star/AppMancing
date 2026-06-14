@@ -7,9 +7,14 @@ interface LogbookPanelProps {
   onAddLog: (log: Omit<CatchLog, 'id' | 'timestamp'>) => void;
   onRemoveLog: (id: string) => void;
   currentDepth: number;
+  gpsData?: {
+    latitude: number;
+    longitude: number;
+    pondName: string;
+  };
 }
 
-export default function LogbookPanel({ logs, onAddLog, onRemoveLog, currentDepth }: LogbookPanelProps) {
+export default function LogbookPanel({ logs, onAddLog, onRemoveLog, currentDepth, gpsData }: LogbookPanelProps) {
   // Form States
   const [species, setSpecies] = useState('Ikan Nila');
   const [weight, setWeight] = useState(0.8);
@@ -25,7 +30,11 @@ export default function LogbookPanel({ logs, onAddLog, onRemoveLog, currentDepth
       length,
       bait,
       depth: parseFloat(currentDepth.toFixed(1)),
-      notes: notes || 'Tangkapan tercatat di kolam pancing.'
+      notes: notes || 'Tangkapan tercatat di kolam pancing.',
+      coordinates: gpsData ? {
+        latitude: gpsData.latitude,
+        longitude: gpsData.longitude
+      } : undefined
     });
     // Reset fields
     setNotes('');
@@ -248,6 +257,21 @@ export default function LogbookPanel({ logs, onAddLog, onRemoveLog, currentDepth
                         <MessageSquare className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
                         "{log.notes.toUpperCase()}"
                       </p>
+
+                      {log.coordinates && (
+                        <div className="mt-2 text-[9px] font-mono text-geo-cyan flex items-center gap-1.5 bg-geo-panel/65 px-2 py-1 border border-geo-border max-w-max">
+                          <span className="w-1.5 h-1.5 rounded-full bg-geo-cyan animate-pulse"></span>
+                          <span>GPS: {log.coordinates.latitude.toFixed(6)}, {log.coordinates.longitude.toFixed(6)}</span>
+                          <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${log.coordinates.latitude},${log.coordinates.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#64748B] hover:text-white hover:underline flex items-center ml-1.5"
+                          >
+                            MAPS
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 

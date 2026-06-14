@@ -35,6 +35,10 @@ export interface CatchLog {
   bait: string;
   depth: number; // capture absolute depth
   notes: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface PondStructure {
