@@ -3,6 +3,7 @@ import { Fish, SonarSettings, CatchLog, PondStructure, DeviceStatus } from './ty
 import { generateInitialFishes, updateFishPositions } from './utils/simulation';
 import DevicePanel from './components/DevicePanel';
 import GpsTracker from './components/GpsTracker';
+import CameraDetector from './components/CameraDetector';
 import SonarDisplay from './components/SonarDisplay';
 import PondMap from './components/PondMap';
 import LogbookPanel from './components/LogbookPanel';
@@ -87,6 +88,11 @@ export default function App() {
   const [structures, setStructures] = useState<PondStructure[]>([]);
   const [logs, setLogs] = useState<CatchLog[]>([]);
   
+  // Camera motion sensor link configurations
+  const [isFilterActive, setIsFilterActive] = useState(false);
+  const [isMotionDetected, setIsMotionDetected] = useState(false);
+  const [motionScore, setMotionScore] = useState(0);
+
   // Real GPS data state (default to scenic Indonesian fishing area coordinates)
   const [gpsData, setGpsData] = useState({
     latitude: -6.20876,
@@ -420,10 +426,20 @@ export default function App() {
                 gpsData={gpsData} 
                 onGpsUpdate={setGpsData} 
               />
+
+              {/* Pond active camera bio-motion sensor */}
+              <CameraDetector
+                onMotionUpdate={(score, detected) => {
+                  setMotionScore(score);
+                  setIsMotionDetected(detected);
+                }}
+                isFilterActive={isFilterActive}
+                onFilterToggle={setIsFilterActive}
+              />
               
               <SonarDisplay 
                 device={device} 
-                fishes={fishes} 
+                fishes={isFilterActive && !isMotionDetected ? [] : fishes} 
                 settings={settings} 
                 onUpdateSettings={handleUpdateSettings} 
                 maxDepth={currentDepth} 
