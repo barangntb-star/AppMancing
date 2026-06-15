@@ -4,6 +4,7 @@ import { generateInitialFishes, updateFishPositions } from './utils/simulation';
 import DevicePanel from './components/DevicePanel';
 import GpsTracker from './components/GpsTracker';
 import CameraDetector from './components/CameraDetector';
+import PhoneScreenshot from './components/PhoneScreenshot';
 import SonarDisplay from './components/SonarDisplay';
 import PondMap from './components/PondMap';
 import LogbookPanel from './components/LogbookPanel';
@@ -24,7 +25,9 @@ import {
   Anchor,
   Moon,
   Sun,
-  Clock
+  Clock,
+  Smartphone,
+  Camera
 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'sonar_catch_logs_v1';
@@ -54,7 +57,7 @@ const MOCK_INITIAL_LOGS: CatchLog[] = [
 
 export default function App() {
   // Global Navigation State
-  const [activeTab, setActiveTab] = useState<'sonar' | 'map' | 'journal' | 'advisor'>('sonar');
+  const [activeTab, setActiveTab] = useState<'sonar' | 'map' | 'journal' | 'advisor' | 'screenshot'>('sonar');
   
   // App Core States
   const [device, setDevice] = useState<DeviceStatus>({
@@ -408,6 +411,19 @@ export default function App() {
             <Compass className="w-4 h-4" />
             PANDUAN AI
           </button>
+
+          {/* Camera Screenshot View */}
+          <button
+            onClick={() => setActiveTab('screenshot')}
+            className={`px-6 py-2.5 rounded-none text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all border-b-2 ${
+              activeTab === 'screenshot'
+                ? 'bg-geo-bg text-geo-cyan border-geo-cyan font-semibold'
+                : 'text-slate-400 hover:text-slate-200 border-transparent'
+            }`}
+          >
+            <Smartphone className="w-4 h-4" />
+            TANGKAPAN HP
+          </button>
         </div>
 
         {/* Primary View Routing Panels */}
@@ -485,6 +501,16 @@ export default function App() {
               device={device}
               fishes={fishes}
               structures={structures}
+            />
+          )}
+
+          {activeTab === 'screenshot' && (
+            <PhoneScreenshot
+              device={device}
+              fishes={fishes}
+              settings={settings}
+              gpsData={gpsData}
+              maxDepth={currentDepth}
             />
           )}
         </div>
