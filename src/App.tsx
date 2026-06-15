@@ -459,6 +459,9 @@ export default function App() {
                 settings={settings} 
                 onUpdateSettings={handleUpdateSettings} 
                 maxDepth={currentDepth} 
+                isFilterActive={isFilterActive}
+                isMotionDetected={isMotionDetected}
+                motionScore={motionScore}
               />
 
               <SmartAdvisor 

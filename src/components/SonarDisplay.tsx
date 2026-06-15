@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Fish, SonarSettings, DeviceStatus, PondStructure } from '../types';
 import { playSonarPing, playFishAlert } from '../utils/sound';
-import { Volume2, VolumeX, Eye, HelpCircle, EyeOff, Sliders, Settings2, Info } from 'lucide-react';
+import { Volume2, VolumeX, Eye, HelpCircle, EyeOff, Sliders, Settings2, Info, Smartphone, Tv, Wifi } from 'lucide-react';
 
 interface SonarDisplayProps {
   device: DeviceStatus;
@@ -9,6 +9,9 @@ interface SonarDisplayProps {
   settings: SonarSettings;
   onUpdateSettings: (updates: Partial<SonarSettings>) => void;
   maxDepth: number;
+  isFilterActive?: boolean;
+  isMotionDetected?: boolean;
+  motionScore?: number;
 }
 
 export default function SonarDisplay({
@@ -16,13 +19,20 @@ export default function SonarDisplay({
   fishes,
   settings,
   onUpdateSettings,
-  maxDepth
+  maxDepth,
+  isFilterActive = false,
+  isMotionDetected = false,
+  motionScore = 0
 }: SonarDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scrollOffsetRef = useRef(0);
   const bottomProfileRef = useRef<number[]>([]);
   const lastPingTimeRef = useRef(0);
   const spottedFishesRef = useRef<Set<string>>(new Set());
+
+  // Local display view mode state (Switch to handphone for real time mobile visuals!)
+  const [displayMode, setDisplayMode] = useState<'console' | 'handphone'>('handphone');
+  const [phoneRipple, setPhoneRipple] = useState<{ x: number, y: number, id: number } | null>(null);
 
   // Initialize scrolling bottom profile
   useEffect(() => {
@@ -388,69 +398,275 @@ export default function SonarDisplay({
       
       {/* HUD Telemetry and Screen columns */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Sonar HUD Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-[#050B10] p-4 rounded-none border border-geo-border">
-          <div>
-            <span className="text-[10px] text-geo-cyan font-mono tracking-widest block font-bold uppercase">KEDALAMAN UTAMA</span>
-            <span className="text-3xl font-black font-space text-[#00D1FF]">
-              {device.connected ? `${(maxDepth * 0.8).toFixed(1)}` : '0.0'}
-              <span className="text-[10.5px] font-mono tracking-widest ml-1 font-normal text-slate-500 uppercase"> METER</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 border-l border-geo-border pl-6">
-            <div>
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">FREKUENSI</span>
-              <span className="text-xs font-bold text-slate-200 font-mono">{settings.frequency}</span>
-            </div>
-            <div>
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">KONUS BALOK</span>
-              <span className="text-xs font-bold text-slate-200 font-mono">{settings.beamAngle}°</span>
-            </div>
-            <div>
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">SENSITIVITAS</span>
-              <span className="text-xs font-bold text-geo-cyan font-mono">{settings.sensitivity}%</span>
-            </div>
-            <div>
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">FILTERING</span>
-              <span className="text-xs font-bold text-red-400 font-mono uppercase">{settings.noiseFilter}</span>
-            </div>
-            <div>
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">TEMPERATUR</span>
-              <span className="text-xs font-bold text-geo-orange font-mono">{device.connected ? `${device.waterTemp}°C` : '--'}</span>
-            </div>
-            <div className="hidden md:block">
-              <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">STATUS AUDIO</span>
-              <span className="text-xs font-bold text-geo-green font-mono uppercase">{settings.soundEnabled ? 'Aktif' : 'Senyap'}</span>
-            </div>
-          </div>
+        
+        {/* VIEW MODE TOGGLER BAR */}
+        <div className="grid grid-cols-2 border border-geo-border p-1 bg-[#050B10]">
+          <button
+            onClick={() => setDisplayMode('console')}
+            className={`font-mono font-bold text-[10px] py-2 px-3 transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase ${
+              displayMode === 'console'
+                ? 'bg-geo-cyan text-black font-extrabold'
+                : 'bg-black text-[#5F6B7E] hover:text-slate-200'
+            }`}
+          >
+            <Tv className="w-3.5 h-3.5" />
+            🖥️ KONSOL REKAMAN UTAMA (CONSOLE)
+          </button>
+          <button
+            onClick={() => setDisplayMode('handphone')}
+            className={`font-mono font-bold text-[10px] py-2 px-3 transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase ${
+              displayMode === 'handphone'
+                ? 'bg-geo-cyan text-black font-extrabold'
+                : 'bg-black text-[#5F6B7E] hover:text-slate-200'
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5 animate-pulse" />
+            📱 TAMPILAN HP REAL-TIME OUTDOOR (HP HUD)
+          </button>
         </div>
 
-        {/* Sonar Canvas Container */}
-        <div className="relative border border-geo-border rounded-none overflow-hidden bg-[#050B10] flex-1 min-h-[280px]">
-          <canvas
-            ref={canvasRef}
-            width={600}
-            height={320}
-            className="w-full h-full block bg-scanlines cursor-crosshair"
-          />
+        {displayMode === 'console' ? (
+          <>
+            {/* Sonar HUD Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-[#050B10] p-4 rounded-none border border-geo-border">
+              <div>
+                <span className="text-[10px] text-geo-cyan font-mono tracking-widest block font-bold uppercase">KEDALAMAN UTAMA</span>
+                <span className="text-3xl font-black font-space text-[#00D1FF]">
+                  {device.connected ? `${(maxDepth * 0.8).toFixed(1)}` : '0.0'}
+                  <span className="text-[10.5px] font-mono tracking-widest ml-1 font-normal text-slate-500 uppercase"> METER</span>
+                </span>
+              </div>
 
-          {!device.connected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#050B10]/95 text-center px-4">
-              <Info className="w-10 h-10 text-geo-cyan animate-bounce mb-2" />
-              <p className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">SINYAL SONAR MATI</p>
-              <p className="text-[11px] text-[#64748B] max-w-xs mt-1">
-                Aktifkan telemetry dengan mengetuk label <span className="text-geo-cyan font-mono">"Hubungkan Sonar"</span> pada dasbor perangkat.
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 border-l border-geo-border pl-6">
+                <div>
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">FREKUENSI</span>
+                  <span className="text-xs font-bold text-slate-200 font-mono">{settings.frequency}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">KONUS BALOK</span>
+                  <span className="text-xs font-bold text-slate-200 font-mono">{settings.beamAngle}°</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">SENSITIVITAS</span>
+                  <span className="text-xs font-bold text-geo-cyan font-mono">{settings.sensitivity}%</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">FILTERING</span>
+                  <span className="text-xs font-bold text-red-400 font-mono uppercase">{settings.noiseFilter}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">TEMPERATUR</span>
+                  <span className="text-xs font-bold text-geo-orange font-mono">{device.connected ? `${device.waterTemp}°C` : '--'}</span>
+                </div>
+                <div className="hidden md:block">
+                  <span className="text-[9px] text-[#64748B] block font-mono uppercase tracking-wider">STATUS AUDIO</span>
+                  <span className="text-xs font-bold text-geo-green font-mono uppercase">{settings.soundEnabled ? 'Aktif' : 'Senyap'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sonar Canvas Container */}
+            <div className="relative border border-geo-border rounded-none overflow-hidden bg-[#050B10] flex-1 min-h-[280px]">
+              <canvas
+                ref={canvasRef}
+                width={600}
+                height={320}
+                className="w-full h-full block bg-scanlines cursor-crosshair"
+              />
+
+              {!device.connected && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#050B10]/95 text-center px-4">
+                  <Info className="w-10 h-10 text-geo-cyan animate-bounce mb-2" />
+                  <p className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">SINYAL SONAR MATI</p>
+                  <p className="text-[11px] text-[#64748B] max-w-xs mt-1">
+                    Aktifkan telemetry dengan mengetuk label <span className="text-geo-cyan font-mono">"Hubungkan Sonar"</span> pada dasbor perangkat.
+                  </p>
+                </div>
+              )}
+
+              {device.connected && (
+                <div className="absolute top-2 right-2 bg-geo-panel/95 border border-geo-cyan/30 font-mono text-[9px] px-2 py-1 rounded-none text-geo-cyan pointer-events-none tracking-widest">
+                  AUTO RANGE: {maxDepth}M
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-4 py-4 bg-[#050B10] border border-geo-border relative">
+            {/* Glowing scanline background */}
+            <div className="absolute inset-0 bg-scanlines opacity-5 pointer-events-none"></div>
+
+            <div className="text-center max-w-md px-4 mt-1">
+              <span className="text-[9.5px] text-geo-cyan font-mono tracking-widest uppercase block animate-pulse">SMARTPHONE PORTABLE VIEW LINKED</span>
+              <p className="text-xs text-slate-400 mt-1 font-space">
+                Layar berikut mensimulasikan pergerakan ikan di kolam secara real-time pada gawai Anda. Sentuh atau klik layar HP untuk melakukan umpan/cipratan air.
               </p>
             </div>
-          )}
 
-          {device.connected && (
-            <div className="absolute top-2 right-2 bg-geo-panel/95 border border-geo-cyan/30 font-mono text-[9px] px-2 py-1 rounded-none text-geo-cyan pointer-events-none tracking-widest">
-              AUTO RANGE: {maxDepth}M
+            {/* Simulated Smartphone casing */}
+            <div className="relative w-full max-w-[305px] aspect-[9/18] bg-black rounded-[42px] p-4 border-[8px] border-slate-700 shadow-2xl ring-2 ring-slate-800 flex flex-col overflow-hidden">
+              {/* Speaker top punch */}
+              <div className="absolute top-0 left-16 right-16 h-7 bg-slate-900 rounded-b-2xl z-40 flex items-center justify-center gap-2 border-b border-slate-800">
+                <div className="w-14 h-1 bg-slate-600 rounded-full"></div>
+                <div className="w-2.5 h-2.5 bg-slate-800 rounded-full border border-slate-700"></div>
+              </div>
+
+              {/* Inner screen glass cover overlay */}
+              <div 
+                onClick={(e) => {
+                  const bounds = e.currentTarget.getBoundingClientRect();
+                  const xDist = e.clientX - bounds.left;
+                  const yDist = e.clientY - bounds.top;
+                  setPhoneRipple({ x: xDist, y: yDist, id: Date.now() });
+                  
+                  // Play splash sound!
+                  if (settings.soundEnabled) {
+                    try {
+                      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                      const osc = audioCtx.createOscillator();
+                      const gain = audioCtx.createGain();
+                      osc.type = 'triangle';
+                      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                      osc.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.15);
+                      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                      
+                      osc.connect(gain);
+                      gain.connect(audioCtx.destination);
+                      osc.start();
+                      osc.stop(audioCtx.currentTime + 0.25);
+                    } catch (err) {}
+                  }
+
+                  // Clear splash after animation completes
+                  setTimeout(() => setPhoneRipple(null), 1000);
+                }}
+                className="relative flex-1 bg-[#03080e] rounded-[30px] overflow-hidden border border-slate-950 flex flex-col z-10 select-none cursor-pointer"
+              >
+                
+                {/* Phone Android battery/cellular status bar */}
+                <div className="h-6 px-4 pt-1 flex items-center justify-between text-[8px] font-mono text-slate-400 bg-black/60 z-30 select-none">
+                  <span>{new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-geo-cyan">HP_GPS_ON</span>
+                    <Wifi className="w-2.5 h-2.5 text-geo-cyan" />
+                    <span>{device.connected ? `${device.battery}%` : '85%'}🔋</span>
+                  </div>
+                </div>
+
+                {/* Main Dynamic Ocean / Water Column Renders */}
+                <div className="flex-1 relative flex flex-col overflow-hidden bg-gradient-to-b from-[#091b2c] via-[#05111d] to-[#02070d]">
+                  
+                  {/* Grid divisions lines */}
+                  <div className="absolute inset-0 bg-scanlines opacity-10"></div>
+                  <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none">
+                    <div className="border-b border-[#00D1FF]/5 w-full h-[1px]"></div>
+                    <div className="border-b border-[#00D1FF]/5 w-full h-[1px]"></div>
+                    <div className="border-b border-[#00D1FF]/5 w-full h-[1px]"></div>
+                    <div className="border-b border-[#00D1FF]/5 w-full h-[1px]"></div>
+                    <div className="border-b border-[#00D1FF]/5 w-full h-[1px]"></div>
+                  </div>
+
+                  {/* Surface reflection ripple wave line animated */}
+                  <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-geo-cyan/15 to-transparent flex items-center justify-center">
+                    <span className="text-[6.5px] font-mono text-geo-cyan/40 tracking-widest uppercase animate-pulse">SURFACE READINGS</span>
+                  </div>
+
+                  {/* Sandy pond floor */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[22%] bg-gradient-to-t from-black via-red-950/40 to-yellow-900/25 border-t border-dashed border-[#F59E0B]/50 flex flex-col justify-center items-center">
+                    <span className="text-[7.5px] font-mono text-[#F59E0B]/55 uppercase tracking-wider font-extrabold">POND BOTTOM contour</span>
+                    <p className="text-[12px] font-bold font-mono text-white mt-1">
+                      {device.connected ? `${maxDepth.toFixed(1)}M` : '0.0M'}
+                    </p>
+                  </div>
+
+                  {/* CAMERA FILTER BLINK BAR */}
+                  {isFilterActive && (
+                    <div className="absolute top-2.5 left-2 right-2 p-1.5 bg-black/85 border border-[#00D1FF]/25 font-mono text-[7px] flex items-center justify-between z-30 shadow-md">
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isMotionDetected ? 'bg-geo-green animate-ping' : 'bg-red-500'}`}></span>
+                        <span className="text-slate-300 font-bold">SENSOR GERAK:</span>
+                      </div>
+                      <span className={isMotionDetected ? 'text-[#10B981] font-black' : 'text-slate-500 font-black'}>
+                        {isMotionDetected ? `TERDETEKSI (${motionScore.toFixed(0)}%)` : 'SUNYI / NO FISH'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Realtime swimming fish inside mobile window */}
+                  <div className="absolute inset-0 top-7 bottom-[22%]">
+                    {device.connected ? (
+                      fishes.length > 0 ? (
+                        fishes.map((fish) => {
+                          const sizeColor = fish.size === 'large' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : fish.size === 'medium' ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]' : 'bg-geo-cyan shadow-[0_0_8px_rgba(0,209,255,0.8)]';
+                          const scaleStyle = fish.size === 'large' ? 'scale-110' : fish.size === 'medium' ? 'scale-90' : 'scale-75';
+
+                          return (
+                            <div
+                              key={fish.id}
+                              style={{
+                                left: `${Math.max(8, Math.min(88, fish.x))}%`,
+                                top: `calc(${fish.y}% - 14px)`
+                              }}
+                              className="absolute transition-all duration-1000 ease-out flex flex-col items-center z-20 pointer-events-none"
+                            >
+                              <div className="relative">
+                                {/* Tail tail indicator fin depending on direction */}
+                                <div className={`absolute w-1 h-3 rounded-md top-1 ${fish.size === 'large' ? 'h-4' : ''} ${fish.direction === 1 ? '-left-2 bg-slate-400' : 'right-[-8px] bg-slate-400'}`}></div>
+                                
+                                <div className={`flex items-center gap-1.5 bg-black/85 border border-slate-700/80 rounded shadow-md p-1 ${scaleStyle}`}>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${sizeColor} animate-pulse`}></div>
+                                  <span className="text-[7.5px] font-mono font-bold text-white uppercase">{fish.species}</span>
+                                </div>
+                                <div className="bg-slate-900/90 border border-slate-800 text-[6.5px] font-mono font-bold text-geo-cyan rounded-none px-1 py-[1px] mx-auto text-center max-w-max mt-0.5">
+                                  {fish.depth}m
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                          <span className="text-[8.5px] font-mono text-slate-500 tracking-wider leading-relaxed block uppercase font-bold animate-pulse">
+                            {isFilterActive 
+                              ? '✗ LAYAR BERSIH (TENANG)\nNYALAKAN GERAKAN / CIPRATAN AIR BIAR IKAN MUNCUL' 
+                              : 'MENUNGGU DATA IKAN...'}
+                          </span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                        <span className="text-[8px] font-mono text-yellow-500 tracking-widest uppercase block animate-pulse">
+                          SENSOR HP OFFLINE
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Active interactive click touch ripple splash */}
+                    {phoneRipple && (
+                      <div 
+                        style={{ left: phoneRipple.x, top: phoneRipple.y }}
+                        className="absolute w-12 h-12 border-2 border-geo-cyan rounded-full -translate-x-1/2 -translate-y-1/2 animate-ping pointer-events-none"
+                      ></div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Bottom Android layout navigation line */}
+                <div className="h-4 w-full bg-slate-950 flex justify-center items-center select-none">
+                  <div className="w-12 h-0.5 bg-slate-600 rounded-full"></div>
+                </div>
+
+              </div>
             </div>
-          )}
-        </div>
+
+            <div className="text-[10px] font-mono text-[#64748B] flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping"></span>
+              LIVE PORTABLE HUD MAPPED | TAP SCREEN TO CHIRP
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Settings / Controls Column */}
